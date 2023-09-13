@@ -183,21 +183,3 @@ class MyPromise {
     });
   }
 }
-const p = MyPromise.resolve({
-  then(reslove, reject) {
-    reject('error');
-  }
-}).catch(console.log);
-
-p2.then((res) => 2)
-  .then(
-    (value) => {
-      console.log('调用finally的回调');
-      return res;
-    },
-    (reason) => {
-      console.log('调用finally的回调');
-      throw reason;
-    }
-  )
-  .then(console.log);
