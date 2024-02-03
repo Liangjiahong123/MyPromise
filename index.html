@@ -12,15 +12,13 @@
   <script src="./ResponsiveSystem.js"></script>
 
   <script>
-
     effect(() => {
-      console.log('effect run');
-      document.body.innerText = obj.ok ? obj.text : 'not';
+      console.log(obj.foo);
     });
 
-    // setTimeout(() => {
-    //   obj.text = 'vue niubi';
-    // }, 2000);
+    obj.foo++
+    obj.foo++
+
   </script>
 </body>
 

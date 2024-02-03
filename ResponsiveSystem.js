@@ -2,7 +2,7 @@
 const bucket = new WeakMap();
 
 // 原始数据
-const data = { ok: true, text: 'Hello Vue3' };
+const data = { foo: 1, bar: 2 };
 
 // 对原始数据的代理
 const obj = new Proxy(data, {
@@ -44,19 +44,54 @@ function trigger(target, key) {
   if (!depsMap) return;
   // 根据key取出所有副作用函数并执行
   const effects = depsMap.get(key);
-  effects?.forEach((fn) => fn()); // 将副作用函数从桶中取出并执行
+
+  const effectsToRun = new Set();
+  effects?.forEach((effectFn) => {
+    // 如果trigger触发执行的副作用函数与当前正在执行的副作用函数相同，则不触发执行
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
+  // 将副作用函数从桶中取出并执行
+  effectsToRun.forEach((effectFn) => {
+    // 如果传入了调度函数,则调用该调度函数,并将副作用函数作为参数传递,否则直接执行副作用函数
+    const schedulerHandler = effectFn.options.scheduler;
+    schedulerHandler ? schedulerHandler(effectFn) : effectFn();
+  });
 }
 
-// 用于存储副作用函数
+// 用于存储当前激活的副作用函数
 let activeEffect;
+// effect 栈
+const effectStack = [];
 // effect变成一个用于注册的函数，传入的fn才是需要收集的副作用函数
-function effect(fn) {
+function effect(fn, options = {}) {
   const effectFn = () => {
+    cleanup(effectFn);
     // 当effectFn执行时，将其设置为当前激活的副作用函数
     activeEffect = effectFn;
-    fn(); // 执行副作用函数
+    // 在调用副作用函数前先压入栈中
+    effectStack.push(effectFn);
+    // 执行副作用函数
+    fn();
+    // 执行完毕后讲当前副作用函数弹出栈
+    effectStack.pop();
+    // 把activeEffect还原为之前的值
+    activeEffect = effectStack[effectStack.length - 1];
   };
-
+  // 将options挂载到effectFn上
+  effectFn.options = options;
+  // 用于存储所有与该副作用函数相关的依赖集合
   effectFn.deps = [];
   effectFn();
+}
+
+function cleanup(effectFn) {
+  // 遍历effectFn.deps
+  for (let i = 0; i < effectFn.deps.length; i++) {
+    const deps = effectFn.deps[i]; // 获取依赖集合
+    deps.delete(effectFn); // 将effectFn从依赖集合中移除
+  }
+
+  effectFn.deps.length = 0; // 重置effectFn.deps数组
 }
