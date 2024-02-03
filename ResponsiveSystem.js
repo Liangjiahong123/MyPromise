@@ -95,3 +95,38 @@ function cleanup(effectFn) {
 
   effectFn.deps.length = 0; // 重置effectFn.deps数组
 }
+
+// 任务队列
+const jobQueue = new Set();
+// promise实例,用于将任务添加到微任务队列
+const p = Promise.resolve();
+// 队列是否正在刷新的标志
+let isFlushing = false;
+function flushJob() {
+  // 如果队列正在刷新,则什么都不做
+  if (isFlushing) return;
+  // 设置为true,代表正在刷新
+  isFlushing = true;
+  // 在微任务中刷新jobQueue队列
+  p.then(() => {
+    jobQueue.forEach((job) => job());
+  }).finally(() => {
+    // 结束后重置isFlushing
+    isFlushing = false;
+  });
+}
+
+// effect(
+//   () => {
+//     console.log(obj.foo);
+//   },
+//   {
+//     scheduler(fn) {
+//       jobQueue.add(fn);
+//       flushJob();
+//     }
+//   }
+// );
+
+// obj.foo++;
+// obj.foo++;
